@@ -17,17 +17,20 @@ package main
 import (
 	"errors"
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
-	"github.com/retailnext/iptables_exporter/iptables"
+	"github.com/tuenti/iptables_exporter/iptables"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-type collector struct{}
+type collector struct {
+	capture *regexp.Regexp
+}
 
 var (
 	scrapeDurationDesc = prometheus.NewDesc(
@@ -73,6 +76,13 @@ var (
 	)
 )
 
+func NewCollector(captureRE string) collector {
+	// Let regexp.MustCompile panic if regex is not valid
+	return collector{
+		capture: regexp.MustCompile(captureRE),
+	}
+}
+
 func (c *collector) Describe(descChan chan<- *prometheus.Desc) {
 	descChan <- scrapeDurationDesc
 	descChan <- scrapeSuccessDesc
@@ -84,7 +94,7 @@ func (c *collector) Describe(descChan chan<- *prometheus.Desc) {
 
 func (c *collector) Collect(metricChan chan<- prometheus.Metric) {
 	start := time.Now()
-	tables, err := iptables.GetTables()
+	tables, err := iptables.GetTables(c.capture)
 	duration := time.Since(start)
 	if err == nil && len(tables) == 0 {
 		err = errors.New("no output from iptables-save; this is probably due to insufficient permissions")
@@ -143,6 +153,7 @@ func main() {
 	var (
 		listenAddress = kingpin.Flag("web.listen-address", "Address on which to expose metrics and web interface.").Default(":9455").String()
 		metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
+		captureRE     = kingpin.Flag("iptables.capture-re", "Regular expression used to export as 'rule' label desired bits from iptables rule").Default(`.*`).String()
 	)
 
 	log.AddFlags(kingpin.CommandLine)
@@ -153,7 +164,7 @@ func main() {
 	log.Infoln("Starting iptables_exporter", version.Info())
 	log.Infoln("Build context", version.BuildContext())
 
-	var c collector
+	c := NewCollector(*captureRE)
 	prometheus.MustRegister(&c)
 
 	http.Handle(*metricsPath, promhttp.Handler())
