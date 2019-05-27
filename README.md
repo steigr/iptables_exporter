@@ -13,6 +13,13 @@ Including the following systemd `[Service]` options will allow this exporter to 
     CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_NET_ADMIN CAP_NET_RAW
     AmbientCapabilities=CAP_DAC_READ_SEARCH CAP_NET_ADMIN CAP_NET_RAW
 
+### Filtering and capturing
+
+`rule` label exported in `iptables_rule_packets_total` can be refined using `--iptables.capture-re` flag.
+If the regular expression is not met for any rule, that rule is removed from the metrics, so that
+feature can also be used to filter out unwanted rules.
+
+
 ### Exported Metrics
 
 This exporter is best used in conjunction with iptables rules that cause interesting traffic flows to be counted.
