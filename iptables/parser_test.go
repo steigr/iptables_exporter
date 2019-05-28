@@ -16,6 +16,7 @@ package iptables
 
 import (
 	"os"
+	"regexp"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -23,6 +24,7 @@ import (
 
 type parserTestCase struct {
 	name     string
+	capture  *regexp.Regexp
 	expected Tables
 }
 
@@ -32,7 +34,7 @@ func (c parserTestCase) run() ([]string, error) {
 		return nil, err
 	}
 	defer f.Close()
-	result, err := ParseIptablesSave(f)
+	result, err := ParseIptablesSave(f, c.capture)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +43,8 @@ func (c parserTestCase) run() ([]string, error) {
 
 var parserTestCases = []parserTestCase{
 	{
-		name: "server.iptables-save",
+		name:    "server.iptables-save",
+		capture: regexp.MustCompile(".*"),
 		expected: Tables{
 			"filter": {
 				"INPUT": {
@@ -130,7 +133,144 @@ var parserTestCases = []parserTestCase{
 		},
 	},
 	{
-		name: "router.iptables-save",
+		name:    "server.iptables-save",
+		capture: regexp.MustCompile(`--dport (\d+) -j (ACCEPT)`),
+		expected: Tables{
+			"filter": {
+				"INPUT": {
+					Policy:  "ACCEPT",
+					Packets: 8202915326,
+					Bytes:   443356185985,
+					Rules: []Rule{
+						{
+							Packets: 7981319024,
+							Bytes:   1536987862973,
+							Rule:    "7000 ACCEPT",
+						},
+						{
+							Packets: 1335166082,
+							Bytes:   279365222746,
+							Rule:    "9160 ACCEPT",
+						},
+						{
+							Packets: 27438740,
+							Bytes:   6089401408,
+							Rule:    "7199 ACCEPT",
+						},
+						{
+							Packets: 1285509559,
+							Bytes:   346897300390,
+							Rule:    "9042 ACCEPT",
+						},
+					},
+				},
+				"FORWARD": {
+					Policy: "ACCEPT",
+				},
+				"OUTPUT": {
+					Policy:  "ACCEPT",
+					Packets: 8189941891,
+					Bytes:   1885661899958,
+				},
+			},
+			"mangle": {
+				"PREROUTING": {
+					Policy:  "ACCEPT",
+					Packets: 18832348733,
+					Bytes:   2612695974158,
+				},
+				"INPUT": {
+					Policy:  "ACCEPT",
+					Packets: 18832348731,
+					Bytes:   2612695973502,
+				},
+				"FORWARD": {
+					Policy: "ACCEPT",
+				},
+				"OUTPUT": {
+					Policy:  "ACCEPT",
+					Packets: 17906945694,
+					Bytes:   2730159008813,
+				},
+				"POSTROUTING": {
+					Policy:  "ACCEPT",
+					Packets: 17906945694,
+					Bytes:   2730159008813,
+				},
+			},
+		},
+	},
+	{
+		name:    "server.iptables-save",
+		capture: regexp.MustCompile(`--dport (\d+)`),
+		expected: Tables{
+			"filter": {
+				"INPUT": {
+					Policy:  "ACCEPT",
+					Packets: 8202915326,
+					Bytes:   443356185985,
+					Rules: []Rule{
+						{
+							Packets: 7981319024,
+							Bytes:   1536987862973,
+							Rule:    "7000",
+						},
+						{
+							Packets: 1335166082,
+							Bytes:   279365222746,
+							Rule:    "9160",
+						},
+						{
+							Packets: 27438740,
+							Bytes:   6089401408,
+							Rule:    "7199",
+						},
+						{
+							Packets: 1285509559,
+							Bytes:   346897300390,
+							Rule:    "9042",
+						},
+					},
+				},
+				"FORWARD": {
+					Policy: "ACCEPT",
+				},
+				"OUTPUT": {
+					Policy:  "ACCEPT",
+					Packets: 8189941891,
+					Bytes:   1885661899958,
+				},
+			},
+			"mangle": {
+				"PREROUTING": {
+					Policy:  "ACCEPT",
+					Packets: 18832348733,
+					Bytes:   2612695974158,
+				},
+				"INPUT": {
+					Policy:  "ACCEPT",
+					Packets: 18832348731,
+					Bytes:   2612695973502,
+				},
+				"FORWARD": {
+					Policy: "ACCEPT",
+				},
+				"OUTPUT": {
+					Policy:  "ACCEPT",
+					Packets: 17906945694,
+					Bytes:   2730159008813,
+				},
+				"POSTROUTING": {
+					Policy:  "ACCEPT",
+					Packets: 17906945694,
+					Bytes:   2730159008813,
+				},
+			},
+		},
+	},
+	{
+		name:    "router.iptables-save",
+		capture: regexp.MustCompile(".*"),
 		expected: Tables{
 			"mangle": {
 				"PREROUTING": {

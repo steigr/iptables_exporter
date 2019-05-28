@@ -23,11 +23,11 @@ import (
 	"strings"
 )
 
-func ParseIptablesSave(r io.Reader) (Tables, error) {
+func ParseIptablesSave(r io.Reader, capture *regexp.Regexp) (Tables, error) {
 	scanner := bufio.NewScanner(r)
 	var parser parser
 	for scanner.Scan() {
-		parser.handleLine(scanner.Text())
+		parser.handleLine(scanner.Text(), capture)
 	}
 	parser.flush()
 	err := scanner.Err()
@@ -92,7 +92,7 @@ func (p *parser) handleNewChain(line string) {
 	p.currentTable[name] = chain
 }
 
-func (p *parser) handleRule(line string) {
+func (p *parser) handleRule(line string, capture *regexp.Regexp) {
 	fields := strings.Fields(line)
 	var subParser ruleParser
 	for _, token := range fields {
@@ -112,12 +112,22 @@ func (p *parser) handleRule(line string) {
 		Bytes:   subParser.bytes,
 		Rule:    strings.Join(subParser.flags, " "),
 	}
+	captureResult := capture.FindStringSubmatch(r.Rule)
+	// Regexp didn't match, ignore rule
+	if len(captureResult) == 0 {
+		return
+		// } else if len(captureResult) == 1
+		// Skip as no modification of rule will happen (captured the whole result)
+	} else if len(captureResult) > 1 {
+		// Join all regexp capture groups
+		r.Rule = strings.Join(captureResult[1:], " ")
+	}
 	chain := p.currentTable[subParser.chain]
 	chain.Rules = append(chain.Rules, r)
 	p.currentTable[subParser.chain] = chain
 }
 
-func (p *parser) handleLine(line string) {
+func (p *parser) handleLine(line string, capture *regexp.Regexp) {
 	p.line++
 	line = strings.TrimSpace(line)
 	if line == "" || strings.HasPrefix(line, "#") {
@@ -137,7 +147,7 @@ func (p *parser) handleLine(line string) {
 		return
 	}
 	if strings.HasPrefix(line, "[") {
-		p.handleRule(line)
+		p.handleRule(line, capture)
 		return
 	}
 	p.errors = append(p.errors, ParseError{"unhandled line", p.line, line})
