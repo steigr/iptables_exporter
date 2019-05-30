@@ -32,6 +32,13 @@ type collector struct {
 	capture *regexp.Regexp
 }
 
+type ruleCounter map[string]*ruleValues
+
+type ruleValues struct {
+	bytes   float64
+	packets float64
+}
+
 var (
 	scrapeDurationDesc = prometheus.NewDesc(
 		"iptables_scrape_duration_seconds",
@@ -125,22 +132,36 @@ func (c *collector) Collect(metricChan chan<- prometheus.Metric) {
 				chainName,
 				chain.Policy,
 			)
+			// Dedup rules if they have the same identifier
+			rulesCounters := make(ruleCounter)
 			for _, rule := range chain.Rules {
+				if _, ok := rulesCounters[rule.Rule]; ok {
+					log.Debugf("Merging counters for %s in chain %s[%s]", rule.Rule, chainName, tableName)
+					rulesCounters[rule.Rule].bytes += float64(rule.Bytes)
+					rulesCounters[rule.Rule].packets += float64(rule.Packets)
+				} else {
+					rulesCounters[rule.Rule] = &ruleValues{
+						bytes:   float64(rule.Bytes),
+						packets: float64(rule.Packets),
+					}
+				}
+			}
+			for ruleName, ruleData := range rulesCounters {
 				metricChan <- prometheus.MustNewConstMetric(
 					rulePacketsDesc,
 					prometheus.CounterValue,
-					float64(rule.Packets),
+					ruleData.packets,
 					tableName,
 					chainName,
-					rule.Rule,
+					ruleName,
 				)
 				metricChan <- prometheus.MustNewConstMetric(
 					ruleBytesDesc,
 					prometheus.CounterValue,
-					float64(rule.Bytes),
+					ruleData.bytes,
 					tableName,
 					chainName,
-					rule.Rule,
+					ruleName,
 				)
 			}
 		}
