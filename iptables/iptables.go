@@ -14,9 +14,12 @@
 
 package iptables
 
-import "os/exec"
+import (
+	"os/exec"
+	"regexp"
+)
 
-func GetTables() (Tables, error) {
+func GetTables(capture *regexp.Regexp) (Tables, error) {
 	cmd := exec.Command("iptables-save", "-c")
 	pipe, err := cmd.StdoutPipe()
 	if err != nil {
@@ -28,7 +31,7 @@ func GetTables() (Tables, error) {
 		error
 	})
 	go func() {
-		result, parseErr := ParseIptablesSave(pipe)
+		result, parseErr := ParseIptablesSave(pipe, capture)
 		resultCh <- struct {
 			Tables
 			error
