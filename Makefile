@@ -29,6 +29,9 @@ pkgs          = ./...
 PREFIX                  ?= $(shell pwd)
 BIN_DIR                 ?= $(shell pwd)
 
+DOCKER_IMAGE ?= quay.io/steigr/iptables-exporter
+DOCKER_TAG   ?= v$(shell cat VERSION)
+
 all: style staticcheck unused build test
 
 style:
@@ -85,5 +88,8 @@ $(FIRST_GOPATH)/bin/staticcheck:
 
 $(FIRST_GOPATH)/bin/govendor:
 	GOOS= GOARCH= $(GO) get -u github.com/kardianos/govendor
+
+docker-image:
+	docker build -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
 
 .PHONY: all style check_license format build test vet assets tarball promu staticcheck $(FIRST_GOPATH)/bin/staticcheck govendor $(FIRST_GOPATH)/bin/govendor
