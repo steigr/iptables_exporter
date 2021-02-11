@@ -24,7 +24,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
-	"github.com/tuenti/iptables_exporter/iptables"
+	"github.com/steigr/iptables_exporter/iptables"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 

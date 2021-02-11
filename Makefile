@@ -63,7 +63,7 @@ vet:
 
 staticcheck: $(STATICCHECK)
 	@echo ">> running staticcheck"
-	$(STATICCHECK) -ignore "$(STATICCHECK_IGNORE)" $(pkgs)
+	$(STATICCHECK) $(pkgs)
 
 unused: $(GOVENDOR)
 	@echo ">> running check for unused packages"
